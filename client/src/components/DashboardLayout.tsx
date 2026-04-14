@@ -21,7 +21,14 @@ import {
   Menu,
   X,
   User,
+  Bell,
+  CreditCard,
+  Crown,
+  LogOut,
 } from "lucide-react";
+import NotificationBell from "./NotificationBell";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -34,11 +41,18 @@ const NAV_ITEMS = [
   { path: "/bankroll", label: "Bankroll", icon: Wallet },
 ];
 
+const BOTTOM_NAV = [
+  { path: "/notifications", label: "Notifications", icon: Bell },
+  { path: "/pricing", label: "Pricing", icon: Crown },
+  { path: "/billing", label: "Billing", icon: CreditCard },
+];
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { dataSource } = useApiData();
+  const { user, isAuthenticated, logout } = useAuth();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -112,6 +126,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
+        {/* Bottom nav section */}
+        <div className="px-2 py-2 border-t border-border space-y-1">
+          {BOTTOM_NAV.map((item) => {
+            const isActive = location === item.path;
+            const Icon = item.icon;
+            return (
+              <Link key={item.path} href={item.path}>
+                <div
+                  onClick={() => setMobileOpen(false)}
+                  className={`
+                    group flex items-center gap-3 px-3 py-2 rounded-lg
+                    transition-all duration-200 cursor-pointer text-xs
+                    ${isActive
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }
+                  `}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                  {!collapsed && (
+                    <span className="font-medium whitespace-nowrap">{item.label}</span>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
         {/* Collapse toggle */}
         <div className="hidden lg:flex items-center justify-center py-3 border-t border-border">
           <button
@@ -135,7 +177,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-bold text-foreground">
-              {NAV_ITEMS.find((n) => n.path === location)?.label || "Dashboard"}
+              {NAV_ITEMS.find((n) => n.path === location)?.label || BOTTOM_NAV.find((n) => n.path === location)?.label || "Dashboard"}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -143,6 +185,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
               <span className="text-xs font-medium text-profit data-value">System Online</span>
             </div>
+            {isAuthenticated && <NotificationBell />}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline text-xs text-muted-foreground">{user?.name || "User"}</span>
+                <button
+                  onClick={() => logout()}
+                  className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <a
+                href={getLoginUrl()}
+                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                Sign In
+              </a>
+            )}
           </div>
         </header>
 

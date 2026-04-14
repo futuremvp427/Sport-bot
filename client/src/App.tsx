@@ -13,6 +13,9 @@ import PlayerProps from "./pages/PlayerProps";
 import Backtesting from "./pages/Backtesting";
 import Models from "./pages/Models";
 import Bankroll from "./pages/Bankroll";
+import NotificationSettings from "./pages/NotificationSettings";
+import Pricing from "./pages/Pricing";
+import Billing from "./pages/Billing";
 
 function Router() {
   return (
@@ -26,6 +29,9 @@ function Router() {
         <Route path="/backtesting" component={Backtesting} />
         <Route path="/models" component={Models} />
         <Route path="/bankroll" component={Bankroll} />
+        <Route path="/notifications" component={NotificationSettings} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/billing" component={Billing} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
