@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Predictions from "./pages/Predictions";
 import Edges from "./pages/Edges";
 import Arbitrage from "./pages/Arbitrage";
+import PlayerProps from "./pages/PlayerProps";
 import Backtesting from "./pages/Backtesting";
 import Models from "./pages/Models";
 import Bankroll from "./pages/Bankroll";
@@ -21,6 +22,7 @@ function Router() {
         <Route path="/predictions" component={Predictions} />
         <Route path="/edges" component={Edges} />
         <Route path="/arbitrage" component={Arbitrage} />
+        <Route path="/props" component={PlayerProps} />
         <Route path="/backtesting" component={Backtesting} />
         <Route path="/models" component={Models} />
         <Route path="/bankroll" component={Bankroll} />

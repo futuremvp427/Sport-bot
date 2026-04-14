@@ -3,12 +3,12 @@
   Design: Midnight Command — glass cards, data tables, status badges
 */
 import { useState, useMemo } from "react";
-import { useMockData } from "@/hooks/useMockData";
+import { useApiData } from "@/hooks/useApiData";
 import { motion } from "framer-motion";
 import { Brain, Filter, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export default function Predictions() {
-  const { predictions } = useMockData();
+  const { predictions } = useApiData();
   const [sportFilter, setSportFilter] = useState("all");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
 

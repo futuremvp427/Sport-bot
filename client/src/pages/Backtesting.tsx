@@ -2,7 +2,7 @@
   Backtesting — Strategy comparison with bankroll charts
   Design: Midnight Command — comparison table, area charts, glass cards
 */
-import { useMockData } from "@/hooks/useMockData";
+import { useApiData } from "@/hooks/useApiData";
 import { motion } from "framer-motion";
 import { FlaskConical, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 import {
@@ -19,7 +19,7 @@ import {
 const COLORS = ["oklch(0.765 0.177 163)", "oklch(0.585 0.233 277)", "oklch(0.712 0.194 13)"];
 
 export default function Backtesting() {
-  const { backtests } = useMockData();
+  const { backtests } = useApiData();
 
   // Merge bankroll histories for chart
   const maxLen = Math.max(...backtests.map((b) => b.bankrollHistory.length));

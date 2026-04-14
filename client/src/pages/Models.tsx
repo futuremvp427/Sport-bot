@@ -2,7 +2,7 @@
   Models — ML model performance metrics and comparison
   Design: Midnight Command — metric cards, radar-style comparisons
 */
-import { useMockData } from "@/hooks/useMockData";
+import { useApiData } from "@/hooks/useApiData";
 import { motion } from "framer-motion";
 import { Cpu, Award, BarChart3 } from "lucide-react";
 import {
@@ -19,7 +19,7 @@ import {
 const COLORS = ["oklch(0.765 0.177 163)", "oklch(0.585 0.233 277)", "oklch(0.795 0.184 86)"];
 
 export default function Models() {
-  const { modelMetrics } = useMockData();
+  const { modelMetrics } = useApiData();
 
   // Radar chart data
   const radarData = [

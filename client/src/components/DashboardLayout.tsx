@@ -5,6 +5,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import DemoModeBanner from "./DemoModeBanner";
+import { useApiData } from "@/hooks/useApiData";
 import {
   LayoutDashboard,
   Brain,
@@ -18,6 +20,7 @@ import {
   Zap,
   Menu,
   X,
+  User,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -25,6 +28,7 @@ const NAV_ITEMS = [
   { path: "/predictions", label: "Predictions", icon: Brain },
   { path: "/edges", label: "Value Bets", icon: TrendingUp },
   { path: "/arbitrage", label: "Arbitrage", icon: ArrowLeftRight },
+  { path: "/props", label: "Player Props", icon: User },
   { path: "/backtesting", label: "Backtesting", icon: FlaskConical },
   { path: "/models", label: "Models", icon: Cpu },
   { path: "/bankroll", label: "Bankroll", icon: Wallet },
@@ -34,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { dataSource } = useApiData();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -143,6 +148,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <div className="mb-4">
+            <DemoModeBanner dataSource={dataSource} />
+          </div>
           <AnimatePresence mode="wait">
             <motion.div
               key={location}

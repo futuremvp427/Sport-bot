@@ -1,8 +1,9 @@
 /*
   Bankroll — Bankroll tracking, P&L, and performance metrics
   Design: Midnight Command — area chart, KPI cards, transaction log
+  Platforms: Caesars Sportsbook and PrizePicks
 */
-import { useMockData } from "@/hooks/useMockData";
+import { useApiData } from "@/hooks/useApiData";
 import KpiCard from "@/components/KpiCard";
 import { motion } from "framer-motion";
 import {
@@ -29,7 +30,7 @@ import {
 } from "recharts";
 
 export default function Bankroll() {
-  const { summary, backtests, edges } = useMockData();
+  const { summary, backtests } = useApiData();
 
   const bestBacktest = backtests[0];
   const bankrollData = bestBacktest.bankrollHistory.map((val, i) => ({
@@ -37,23 +38,30 @@ export default function Bankroll() {
     value: Math.round(val),
   }));
 
-  // Simulated recent transactions
+  // Realistic transactions with Caesars and PrizePicks
   const transactions = [
-    { id: 1, type: "win", team: "Lakers", amount: 245, odds: "+155", time: "2h ago" },
-    { id: 2, type: "loss", team: "Celtics", amount: -100, odds: "-120", time: "4h ago" },
-    { id: 3, type: "win", team: "Warriors", amount: 180, odds: "+130", time: "6h ago" },
-    { id: 4, type: "win", team: "Nuggets", amount: 320, odds: "+210", time: "8h ago" },
-    { id: 5, type: "loss", team: "Bucks", amount: -150, odds: "-140", time: "12h ago" },
-    { id: 6, type: "win", team: "Suns", amount: 95, odds: "+105", time: "1d ago" },
-    { id: 7, type: "loss", team: "76ers", amount: -80, odds: "-110", time: "1d ago" },
-    { id: 8, type: "win", team: "Heat", amount: 410, odds: "+275", time: "2d ago" },
+    { id: 1, type: "win", team: "Lakers ML", amount: 285, odds: "+155", time: "2h ago", platform: "Caesars Sportsbook" },
+    { id: 2, type: "win", team: "LeBron O25.5 Pts", amount: 200, odds: "-110", time: "3h ago", platform: "PrizePicks" },
+    { id: 3, type: "loss", team: "Celtics ML", amount: -120, odds: "-130", time: "5h ago", platform: "Caesars Sportsbook" },
+    { id: 4, type: "win", team: "Jokic O10.5 Reb", amount: 175, odds: "+105", time: "6h ago", platform: "PrizePicks" },
+    { id: 5, type: "win", team: "Nuggets -3.5", amount: 220, odds: "-110", time: "8h ago", platform: "Caesars Sportsbook" },
+    { id: 6, type: "loss", team: "Curry O28.5 Pts", amount: -100, odds: "-115", time: "10h ago", platform: "PrizePicks" },
+    { id: 7, type: "win", team: "Thunder ML", amount: 340, odds: "+210", time: "1d ago", platform: "Caesars Sportsbook" },
+    { id: 8, type: "loss", team: "Bucks -5.5", amount: -150, odds: "-110", time: "1d ago", platform: "Caesars Sportsbook" },
+    { id: 9, type: "win", team: "Tatum O7.5 Ast", amount: 190, odds: "+120", time: "1d ago", platform: "PrizePicks" },
+    { id: 10, type: "win", team: "Knicks ML", amount: 155, odds: "+135", time: "2d ago", platform: "Caesars Sportsbook" },
   ];
 
-  // Pie chart data
   const pieData = [
     { name: "Wins", value: bestBacktest.winningBets, color: "oklch(0.765 0.177 163)" },
     { name: "Losses", value: bestBacktest.losingBets, color: "oklch(0.712 0.194 13)" },
   ];
+
+  // Platform breakdown
+  const caesarsTxns = transactions.filter((t) => t.platform === "Caesars Sportsbook");
+  const prizePicksTxns = transactions.filter((t) => t.platform === "PrizePicks");
+  const caesarsProfit = caesarsTxns.reduce((s, t) => s + t.amount, 0);
+  const prizePicksProfit = prizePicksTxns.reduce((s, t) => s + t.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -94,13 +102,73 @@ export default function Bankroll() {
         />
       </div>
 
+      {/* Platform P&L */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="glass-card p-5 border-[#1a6b45]/20"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-bold text-[#4ade80]">♛ Caesars Sportsbook</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-muted-foreground">Recent P&L</div>
+              <div className={`data-value text-xl font-bold ${caesarsProfit >= 0 ? "text-profit" : "text-loss"}`}>
+                {caesarsProfit >= 0 ? "+" : ""}${caesarsProfit}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Bets</div>
+              <div className="data-value text-xl font-bold text-foreground">{caesarsTxns.length}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Win Rate</div>
+              <div className="data-value text-xl font-bold text-profit">
+                {((caesarsTxns.filter((t) => t.type === "win").length / caesarsTxns.length) * 100).toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="glass-card p-5 border-[#6b3fa0]/20"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-bold text-[#c084fc]">⚡ PrizePicks</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-muted-foreground">Recent P&L</div>
+              <div className={`data-value text-xl font-bold ${prizePicksProfit >= 0 ? "text-profit" : "text-loss"}`}>
+                {prizePicksProfit >= 0 ? "+" : ""}${prizePicksProfit}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Bets</div>
+              <div className="data-value text-xl font-bold text-foreground">{prizePicksTxns.length}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Win Rate</div>
+              <div className="data-value text-xl font-bold text-profit">
+                {((prizePicksTxns.filter((t) => t.type === "win").length / prizePicksTxns.length) * 100).toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
       {/* Chart + Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Bankroll Chart */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.35 }}
+          transition={{ delay: 0.25, duration: 0.35 }}
           className="lg:col-span-2 glass-card p-5"
         >
           <div className="flex items-center gap-2 mb-4">
@@ -119,13 +187,7 @@ export default function Bankroll() {
               <XAxis dataKey="day" tick={{ fontSize: 10, fill: "oklch(0.65 0.02 260)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: "oklch(0.65 0.02 260)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} />
               <Tooltip
-                contentStyle={{
-                  background: "oklch(0.17 0.015 260 / 95%)",
-                  border: "1px solid oklch(1 0 0 / 10%)",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  color: "oklch(0.93 0.005 260)",
-                }}
+                contentStyle={{ background: "oklch(0.17 0.015 260 / 95%)", border: "1px solid oklch(1 0 0 / 10%)", borderRadius: "8px", fontSize: "12px", color: "oklch(0.93 0.005 260)" }}
                 formatter={(value: number) => [`$${value.toLocaleString()}`, "Bankroll"]}
               />
               <Area type="monotone" dataKey="value" stroke="oklch(0.585 0.233 277)" strokeWidth={2} fill="url(#bankrollGrad2)" />
@@ -133,38 +195,21 @@ export default function Bankroll() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Win/Loss Pie */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.35 }}
+          transition={{ delay: 0.3, duration: 0.35 }}
           className="glass-card p-5"
         >
           <h3 className="text-sm font-semibold text-foreground mb-4">Win/Loss Distribution</h3>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={80}
-                paddingAngle={3}
-                dataKey="value"
-              >
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
                 {pieData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: "oklch(0.17 0.015 260 / 95%)",
-                  border: "1px solid oklch(1 0 0 / 10%)",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  color: "oklch(0.93 0.005 260)",
-                }}
-              />
+              <Tooltip contentStyle={{ background: "oklch(0.17 0.015 260 / 95%)", border: "1px solid oklch(1 0 0 / 10%)", borderRadius: "8px", fontSize: "12px", color: "oklch(0.93 0.005 260)" }} />
             </PieChart>
           </ResponsiveContainer>
           <div className="flex items-center justify-center gap-6 mt-2">
@@ -184,7 +229,7 @@ export default function Bankroll() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.35 }}
+        transition={{ delay: 0.35, duration: 0.35 }}
         className="glass-card p-5"
       >
         <div className="flex items-center gap-2 mb-4">
@@ -197,7 +242,7 @@ export default function Bankroll() {
               key={tx.id}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.35 + 0.03 * i }}
+              transition={{ delay: 0.38 + 0.03 * i }}
               className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-accent/30 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -210,12 +255,20 @@ export default function Bankroll() {
                 </div>
                 <div>
                   <div className="text-xs font-medium text-foreground">{tx.team}</div>
-                  <div className="text-[10px] text-muted-foreground">{tx.odds} · {tx.time}</div>
+                  <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                    <span>{tx.odds}</span>
+                    <span>·</span>
+                    <span>{tx.time}</span>
+                    <span>·</span>
+                    <span className={`font-semibold ${
+                      tx.platform === "Caesars Sportsbook" ? "text-[#4ade80]" : "text-[#c084fc]"
+                    }`}>
+                      {tx.platform === "Caesars Sportsbook" ? "Caesars" : "PrizePicks"}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <span
-                className={`data-value text-sm font-bold ${tx.type === "win" ? "text-profit" : "text-loss"}`}
-              >
+              <span className={`data-value text-sm font-bold ${tx.type === "win" ? "text-profit" : "text-loss"}`}>
                 {tx.amount > 0 ? "+" : ""}${Math.abs(tx.amount)}
               </span>
             </motion.div>
