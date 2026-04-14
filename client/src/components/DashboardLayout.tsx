@@ -1,0 +1,161 @@
+/*
+  DashboardLayout — Midnight Command sidebar + top bar layout
+  Design: persistent left sidebar with icon+label nav, top bar with global KPIs
+*/
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  LayoutDashboard,
+  Brain,
+  TrendingUp,
+  ArrowLeftRight,
+  FlaskConical,
+  Cpu,
+  Wallet,
+  ChevronLeft,
+  ChevronRight,
+  Zap,
+  Menu,
+  X,
+} from "lucide-react";
+
+const NAV_ITEMS = [
+  { path: "/", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/predictions", label: "Predictions", icon: Brain },
+  { path: "/edges", label: "Value Bets", icon: TrendingUp },
+  { path: "/arbitrage", label: "Arbitrage", icon: ArrowLeftRight },
+  { path: "/backtesting", label: "Backtesting", icon: FlaskConical },
+  { path: "/models", label: "Models", icon: Cpu },
+  { path: "/bankroll", label: "Bankroll", icon: Wallet },
+];
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed lg:static inset-y-0 left-0 z-50
+          flex flex-col border-r border-border
+          bg-sidebar transition-all duration-300 ease-in-out
+          ${collapsed ? "w-[68px]" : "w-[240px]"}
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
+      >
+        {/* Logo area */}
+        <div className="flex items-center gap-3 px-4 h-16 border-b border-border shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4 text-primary" />
+          </div>
+          {!collapsed && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap"
+            >
+              Betting Intel
+            </motion.span>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map((item) => {
+            const isActive = location === item.path;
+            const Icon = item.icon;
+            return (
+              <Link key={item.path} href={item.path}>
+                <div
+                  onClick={() => setMobileOpen(false)}
+                  className={`
+                    group flex items-center gap-3 px-3 py-2.5 rounded-lg
+                    transition-all duration-200 cursor-pointer
+                    ${isActive
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }
+                  `}
+                >
+                  <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-primary" : ""}`} />
+                  {!collapsed && (
+                    <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
+                  )}
+                  {isActive && !collapsed && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Collapse toggle */}
+        <div className="hidden lg:flex items-center justify-center py-3 border-t border-border">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top bar */}
+        <header className="h-16 border-b border-border flex items-center justify-between px-4 lg:px-6 shrink-0 bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-accent text-muted-foreground"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-bold text-foreground">
+              {NAV_ITEMS.find((n) => n.path === location)?.label || "Dashboard"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-profit/10 border border-profit/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
+              <span className="text-xs font-medium text-profit data-value">System Online</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </div>
+  );
+}
