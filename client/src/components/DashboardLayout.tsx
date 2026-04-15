@@ -5,7 +5,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useApiData } from "@/hooks/useApiData";
 import {
   LayoutDashboard,
   Brain,
@@ -50,7 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { dataSource } = useApiData();
   const { user, isAuthenticated, logout } = useAuth();
 
   return (
