@@ -296,3 +296,136 @@ describe("Prediction Engine (getFinalModelProbability)", () => {
     expect(output.finalModelProbAway).toBeGreaterThanOrEqual(0.05);
   });
 });
+
+// ─── Spec Phase 8 Verification Tests ─────────────────────────────
+
+describe("Spec Verification: Fatigue affects back-to-backs", () => {
+  it("fatigue adjustment is clamped and directionally correct for B2B scenario", async () => {
+    const homeLoad = await getScheduleLoad("Miami Heat", "2025-04-15");
+    const awayLoad = await getScheduleLoad("Boston Celtics", "2025-04-15");
+    const adj = await getFatigueAdjustment("Miami Heat", "Boston Celtics", "2025-04-15");
+
+    // Clamped to ±0.05 regardless of scenario
+    expect(adj.value).toBeGreaterThanOrEqual(-0.05);
+    expect(adj.value).toBeLessThanOrEqual(0.05);
+
+    // Directional logic: if home is B2B and away is not → negative (home disadvantage)
+    if (homeLoad.isBackToBack && !awayLoad.isBackToBack) {
+      expect(adj.value).toBeLessThan(0);
+      expect(adj.explanation).toMatch(/back-to-back/i);
+    }
+    // If away is B2B and home is not → positive (home advantage)
+    if (!homeLoad.isBackToBack && awayLoad.isBackToBack) {
+      expect(adj.value).toBeGreaterThan(0);
+    }
+  });
+
+  it("rest day differential produces a non-zero adjustment when gap >= 2 days", async () => {
+    // Find two teams with different rest day buckets on the same date
+    const load1 = await getScheduleLoad("Oklahoma City Thunder", "2025-04-15");
+    const load2 = await getScheduleLoad("Charlotte Hornets", "2025-04-15");
+    const adj = await getFatigueAdjustment("Oklahoma City Thunder", "Charlotte Hornets", "2025-04-15");
+
+    if (Math.abs(load1.restDays - load2.restDays) >= 2) {
+      expect(adj.value).not.toBe(0);
+    }
+    expect(adj.explanation.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Spec Verification: Historical reflects recent performance", () => {
+  it("strong team (Boston) has higher win rate than weak team (Washington)", async () => {
+    const [bostonForm, wizardsForm] = await Promise.all([
+      getRecentForm("Boston Celtics"),
+      getRecentForm("Washington Wizards"),
+    ]);
+    expect(bostonForm.last10WinRate).toBeGreaterThan(wizardsForm.last10WinRate);
+    expect(bostonForm.avgPointsScored).toBeGreaterThan(wizardsForm.avgPointsScored);
+  });
+
+  it("historical adjustment is positive when strong team is home vs weak away", async () => {
+    const adj = await getHistoricalAdjustment("Boston Celtics", "Washington Wizards");
+    expect(adj.value).toBeGreaterThan(0);
+    expect(adj.value).toBeLessThanOrEqual(0.06);
+  });
+
+  it("historical adjustment is smaller (less positive) when weak team is home vs strong away", async () => {
+    // Washington (weak) at home vs Boston (strong):
+    // The home-court component partially offsets the form disadvantage,
+    // so the result may be slightly positive — but it MUST be less than
+    // the Boston-home scenario where both form AND home-court advantage align.
+    const [adjBostonHome, adjWizardsHome] = await Promise.all([
+      getHistoricalAdjustment("Boston Celtics", "Washington Wizards"),
+      getHistoricalAdjustment("Washington Wizards", "Boston Celtics"),
+    ]);
+    // Boston home should always produce a higher adjustment than Wizards home
+    expect(adjBostonHome.value).toBeGreaterThan(adjWizardsHome.value);
+    // Both must be within ±0.06 bounds
+    expect(adjWizardsHome.value).toBeGreaterThanOrEqual(-0.06);
+    expect(adjWizardsHome.value).toBeLessThanOrEqual(0.06);
+  });
+
+  it("adjustment breakdown contains formDiff, h2hBias, homeAwaySplit", async () => {
+    const adj = await getHistoricalAdjustment("Denver Nuggets", "Portland Trail Blazers");
+    expect(typeof adj.formDiff).toBe("number");
+    expect(typeof adj.h2hBias).toBe("number");
+    expect(typeof adj.homeAwaySplit).toBe("number");
+    expect(typeof adj.explanation).toBe("string");
+  });
+});
+
+describe("Spec Verification: System stability when data is missing", () => {
+  it("does not crash with null odds — falls back to 50/50 prior", async () => {
+    const output = await getFinalModelProbability(
+      "Unknown Team A", "Unknown Team B",
+      "basketball_nba", null, null, "2025-04-15"
+    );
+    expect(output.finalModelProbHome).toBeGreaterThanOrEqual(0.05);
+    expect(output.finalModelProbHome).toBeLessThanOrEqual(0.95);
+    expect(output.finalModelProbHome + output.finalModelProbAway).toBeCloseTo(1.0, 3);
+  });
+
+  it("does not crash with completely unknown team names", async () => {
+    const output = await getFinalModelProbability(
+      "Fake City Ballers", "Mystery Town Hoopers",
+      "basketball_nba", -110, -110, "2025-04-15"
+    );
+    expect(output.finalModelProbHome).toBeGreaterThanOrEqual(0.05);
+    expect(output.finalModelProbHome).toBeLessThanOrEqual(0.95);
+    expect(output.confidence).toBeGreaterThanOrEqual(42);
+  });
+
+  it("sample final output contains all required spec fields", async () => {
+    const output = await getFinalModelProbability(
+      "Los Angeles Lakers", "Golden State Warriors",
+      "basketball_nba", -150, +130, "2025-04-15"
+    );
+    // Spec required output fields
+    expect(output).toHaveProperty("marketProbHome");
+    expect(output).toHaveProperty("baseModelProbHome");
+    expect(output).toHaveProperty("historicalAdjustment");
+    expect(output).toHaveProperty("fatigueAdjustment");
+    expect(output).toHaveProperty("finalModelProbHome");
+    expect(output).toHaveProperty("edgeHome");
+    expect(output).toHaveProperty("confidence");
+    // Probability validity
+    expect(output.marketProbHome).toBeGreaterThan(0);
+    expect(output.marketProbHome).toBeLessThan(1);
+    expect(output.finalModelProbHome).toBeGreaterThan(0);
+    expect(output.finalModelProbHome).toBeLessThan(1);
+    // Adjustment bounds per spec
+    expect(Math.abs(output.historicalAdjustment)).toBeLessThanOrEqual(0.06);
+    expect(Math.abs(output.fatigueAdjustment)).toBeLessThanOrEqual(0.05);
+    // Confidence range
+    expect(output.confidence).toBeGreaterThanOrEqual(42);
+    expect(output.confidence).toBeLessThanOrEqual(92);
+    // Deterministic — no random noise
+    const output2 = await getFinalModelProbability(
+      "Los Angeles Lakers", "Golden State Warriors",
+      "basketball_nba", -150, +130, "2025-04-15"
+    );
+    expect(output.finalModelProbHome).toBe(output2.finalModelProbHome);
+    expect(output.historicalAdjustment).toBe(output2.historicalAdjustment);
+    expect(output.fatigueAdjustment).toBe(output2.fatigueAdjustment);
+  });
+});

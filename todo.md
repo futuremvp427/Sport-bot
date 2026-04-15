@@ -71,3 +71,15 @@
 - [x] TypeScript: 0 errors
 - [x] Verify panel opens with live data, explanation renders, missing fields show fallback
 - [x] Save checkpoint
+
+## Phase 10: Activate Fatigue + Historical Layers (Replace Random Noise)
+- [x] Audit existing fatigueService.ts and historicalService.ts
+- [x] Add ENABLE_FATIGUE and ENABLE_HISTORICAL to featureFlags.ts
+- [x] Rebuild fatigueService.ts: getRestDays, isBackToBack, getLastNGames, getFatigueAdjustment (-0.05 to +0.05)
+- [x] Rebuild historicalService.ts: getLastNGamesStats, getWinRateLastN, getHomeAwaySplit, getHistoricalAdjustment (-0.06 to +0.06)
+- [x] Refactor oddsService.ts getModelProb(): remove random noise, wire historical + fatigue layers
+- [x] Add explainability string output to model output
+- [x] Clamp total adjustments, prevent extreme probabilities
+- [x] Update vitest tests to verify both layers
+- [x] TypeScript: 0 errors, all tests passing
+- [x] Save checkpoint and deliver final report
