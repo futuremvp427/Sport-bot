@@ -87,16 +87,22 @@ function round(n: number, places = 2): number {
 export function mapEnhancedOddsToEdge(game: EnhancedGame, startId = 1): Edge[] {
   const edges: Edge[] = [];
   let id = startId;
-
+  // model_home_prob, model_away_prob, implied_home_prob, implied_away_prob are 0-100 on the server
+  // Edge interface uses 0-1 range (matching mock data contract)
   const homeProb  = game.model_home_prob  !== null ? game.model_home_prob  / 100 : null;
   const awayProb  = game.model_away_prob  !== null ? game.model_away_prob  / 100 : null;
   const impliedH  = game.implied_home_prob !== null ? game.implied_home_prob / 100 : null;
   const impliedA  = game.implied_away_prob !== null ? game.implied_away_prob / 100 : null;
-  const edgeVal   = game.edge ?? 0;
-  const conf      = game.confidence ?? 0;
-
+  // edge is 0-100 on server (percentage points) → normalise to 0-1
+  const edgeVal   = (game.edge ?? 0) / 100;
+  // confidence is 0-100 on server → normalise to 0-1
+  const conf      = (game.confidence ?? 0) / 100;
   if (game.best_home_odds !== null && homeProb !== null && impliedH !== null) {
     const dec = americanToDecimal(game.best_home_odds);
+    const ev = (homeProb * (dec - 1)) - (1 - homeProb);
+    const b = dec - 1;
+    const kellyFull = (homeProb * b - (1 - homeProb)) / b;
+    const kellyStake = Math.max(0, Math.round(kellyFull * 0.25 * 10000));
     edges.push({
       id: id++,
       homeTeam: game.home_team,
@@ -104,20 +110,23 @@ export function mapEnhancedOddsToEdge(game: EnhancedGame, startId = 1): Edge[] {
       side: "home",
       team: game.home_team,
       odds: game.best_home_odds,
-      decimalOdds: dec,
-      impliedProb: round(impliedH * 100, 1),
-      predictedProb: round(homeProb * 100, 1),
-      edge: round(edgeVal, 1),
-      expectedValue: round(edgeVal * dec / 100, 3),
-      recommendedStake: Math.max(0, Math.round(edgeVal * 200)),
-      confidence: round(conf, 0),
+      decimalOdds: round(dec, 3),
+      impliedProb: round(impliedH, 4),
+      predictedProb: round(homeProb, 4),
+      edge: round(edgeVal, 4),
+      expectedValue: round(ev, 4),
+      recommendedStake: Math.min(kellyStake, 500),
+      confidence: round(conf, 4),
       sportsbook: game.best_home_book ?? "Best Available",
     });
   }
-
   if (game.best_away_odds !== null && awayProb !== null && impliedA !== null) {
     const dec = americanToDecimal(game.best_away_odds);
-    const awayEdge = round(-edgeVal, 1);
+    const awayEdge = round(-edgeVal, 4);
+    const ev = (awayProb * (dec - 1)) - (1 - awayProb);
+    const b = dec - 1;
+    const kellyFull = (awayProb * b - (1 - awayProb)) / b;
+    const kellyStake = Math.max(0, Math.round(kellyFull * 0.25 * 10000));
     edges.push({
       id: id++,
       homeTeam: game.home_team,
@@ -125,17 +134,16 @@ export function mapEnhancedOddsToEdge(game: EnhancedGame, startId = 1): Edge[] {
       side: "away",
       team: game.away_team,
       odds: game.best_away_odds,
-      decimalOdds: dec,
-      impliedProb: round(impliedA * 100, 1),
-      predictedProb: round(awayProb * 100, 1),
+      decimalOdds: round(dec, 3),
+      impliedProb: round(impliedA, 4),
+      predictedProb: round(awayProb, 4),
       edge: awayEdge,
-      expectedValue: round(awayEdge * dec / 100, 3),
-      recommendedStake: Math.max(0, Math.round(Math.abs(awayEdge) * 200)),
-      confidence: round(conf, 0),
+      expectedValue: round(ev, 4),
+      recommendedStake: Math.min(kellyStake, 500),
+      confidence: round(conf, 4),
       sportsbook: game.best_away_book ?? "Best Available",
     });
   }
-
   return edges;
 }
 
@@ -146,8 +154,12 @@ export function mapEnhancedOddsToEdge(game: EnhancedGame, startId = 1): Edge[] {
  * Predicted winner is determined by the model probability, not market odds.
  */
 export function mapEnhancedOddsToPrediction(game: EnhancedGame, id: number): Prediction {
-  const homeProb = game.model_home_prob ?? 50;
-  const awayProb = game.model_away_prob ?? 50;
+  // model_home_prob / model_away_prob are stored as 0-100 (e.g., 56.8)
+  // The Prediction interface uses 0-1 range (matching mock data contract)
+  const homeProb = (game.model_home_prob ?? 50) / 100;
+  const awayProb = (game.model_away_prob ?? 50) / 100;
+  // confidence is also 0-100 → normalise to 0-1
+  const confidence = (game.confidence ?? 0) / 100;
 
   return {
     id,
@@ -156,9 +168,9 @@ export function mapEnhancedOddsToPrediction(game: EnhancedGame, id: number): Pre
     awayTeam: game.away_team,
     sport: "nba",
     predictedWinner: homeProb >= awayProb ? game.home_team : game.away_team,
-    homeWinProb: round(homeProb, 1),
-    awayWinProb: round(awayProb, 1),
-    confidence: round(game.confidence ?? 0, 0),
+    homeWinProb: round(homeProb, 4),
+    awayWinProb: round(awayProb, 4),
+    confidence: round(confidence, 4),
     modelName: "Multi-Layer Engine",
     predictionTime: new Date().toISOString(),
     outcome: "pending" as const,
@@ -209,6 +221,102 @@ export function mapEnhancedOddsToArbitrageOpp(
     guaranteedProfit,
     status: "active",
     detectedTime: new Date().toISOString(),
+  };
+}
+
+// ─── DetailedPredictionViewModel ────────────────────────────────
+
+/**
+ * View model consumed exclusively by PredictionDetailPanel.
+ * All fields are safe — no nulls, no undefined.
+ */
+export interface DetailedPredictionViewModel {
+  // Matchup
+  homeTeam: string;
+  awayTeam: string;
+  gameTime: string;
+  sport: string;
+  // Market vs Model
+  marketImpliedProbHome: number;   // 0-100
+  marketImpliedProbAway: number;   // 0-100
+  baseModelProbHome: number;       // 0-100 (before adjustments)
+  finalModelProbHome: number;      // 0-100 (after all adjustments)
+  finalModelProbAway: number;      // 0-100
+  edgePct: number;                 // percentage points, positive = home value
+  confidence: number;              // 0-100
+  bestHomeOdds: number | null;
+  bestAwayOdds: number | null;
+  bestHomeBook: string;
+  bestAwayBook: string;
+  // Adjustment breakdown (probability deltas, 0-100 scale)
+  historicalAdj: number;
+  injuryAdj: number;
+  fatigueAdj: number;
+  weatherAdj: number;
+  // Explanation text
+  explanationBase: string;
+  explanationHistorical: string;
+  explanationInjuries: string;
+  explanationFatigue: string;
+  explanationWeather: string;
+  explanationConfidenceReason: string;
+  // Active layers
+  activeLayers: Record<string, string>;
+  // Recommendation
+  recommendation: string;
+  isValueBet: boolean;
+}
+
+/**
+ * Maps a single EnhancedGame to a DetailedPredictionViewModel.
+ * All fields have safe fallbacks — will never throw.
+ */
+export function mapEnhancedGameToPredictionDetail(
+  game: EnhancedGame
+): DetailedPredictionViewModel {
+  const mo = game.model_output;
+  const exp = mo?.explanation;
+  const numeric = exp?.numeric;
+
+  const marketH = game.implied_home_prob ?? 50;
+  const marketA = game.implied_away_prob ?? 50;
+  const finalH  = game.model_home_prob   ?? 50;
+  const finalA  = game.model_away_prob   ?? 50;
+  const edgePct = game.edge ?? 0;
+  const conf    = game.confidence ?? 0;
+
+  // Use market implied prob as the "base" before model adjustments
+  const baseH = round(marketH, 1);
+
+  return {
+    homeTeam: game.home_team,
+    awayTeam: game.away_team,
+    gameTime: game.start_time,
+    sport: game.sport,
+    marketImpliedProbHome: round(marketH, 1),
+    marketImpliedProbAway: round(marketA, 1),
+    baseModelProbHome: round(baseH, 1),
+    finalModelProbHome: round(finalH, 1),
+    finalModelProbAway: round(finalA, 1),
+    edgePct: round(edgePct, 1),
+    confidence: round(conf, 0),
+    bestHomeOdds: game.best_home_odds,
+    bestAwayOdds: game.best_away_odds,
+    bestHomeBook: game.best_home_book ?? "Best Available",
+    bestAwayBook: game.best_away_book ?? "Best Available",
+    historicalAdj: round((numeric?.historicalAdjustment ?? 0) * 100, 2),
+    injuryAdj:     round((numeric?.injuryAdjustment     ?? 0) * 100, 2),
+    fatigueAdj:    round((numeric?.fatigueAdjustment    ?? 0) * 100, 2),
+    weatherAdj:    0, // NBA is always indoors
+    explanationBase:             exp?.base             ?? "Base market probability derived from best available odds.",
+    explanationHistorical:       exp?.historical       ?? "Historical data layer unavailable.",
+    explanationInjuries:         exp?.injuries         ?? "Injury data layer unavailable.",
+    explanationFatigue:          exp?.fatigue          ?? "Fatigue data layer unavailable.",
+    explanationWeather:          exp?.weather          ?? "Weather layer inactive (indoor sport).",
+    explanationConfidenceReason: (mo as any)?.confidenceReason ?? "Confidence derived from edge magnitude and layer agreement.",
+    activeLayers: game.active_layers ?? {},
+    recommendation: game.recommendation ?? "HOLD",
+    isValueBet: game.is_value_bet,
   };
 }
 

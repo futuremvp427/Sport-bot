@@ -62,3 +62,12 @@
 - [x] Verify all 8 pages render with live data
 - [x] TypeScript: 0 errors
 - [x] Save checkpoint
+
+## Phase 9: Per-Game Prediction Detail Panel
+- [x] Add DetailedPredictionViewModel type and mapEnhancedGameToPredictionDetail() to oddsTransforms.ts
+- [x] Create client/src/components/predictions/PredictionDetailPanel.tsx (reusable drawer)
+- [x] Wire click + panel state into Predictions.tsx
+- [x] Wire click + panel state into Edges.tsx (Value Bets page)
+- [x] TypeScript: 0 errors
+- [x] Verify panel opens with live data, explanation renders, missing fields show fallback
+- [x] Save checkpoint

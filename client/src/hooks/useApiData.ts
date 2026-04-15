@@ -61,6 +61,8 @@ export interface SummaryShape {
 }
 
 export interface ApiDataReturn {
+  // Raw enhanced game data (for detail panels)
+  enhancedGames: EnhancedGame[];
   // Page data shapes
   games: Game[];
   predictions: Prediction[];
@@ -184,6 +186,7 @@ export function useApiData(): ApiDataReturn {
         ? mockData.backtests
         : [SAFE_BACKTEST];
     return {
+      enhancedGames: [],
       games: safeArray<Game>(mockData.games),
       predictions: safeArray<Prediction>(mockData.predictions),
       edges: safeArray<Edge>(mockData.edges),
@@ -234,6 +237,7 @@ export function useApiData(): ApiDataReturn {
       : [SAFE_BACKTEST];
 
   return {
+    enhancedGames: liveGames,
     games: safeArray<Game>(mockData.games),
     predictions: hasLive ? livePredictions : [],
     edges: hasLive ? liveEdges : [],
