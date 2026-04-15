@@ -8,10 +8,12 @@ import { motion } from "framer-motion";
 import { Brain, Filter, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export default function Predictions() {
-  const { predictions } = useApiData();
+  const { predictions: rawPredictions, isLoading } = useApiData();
+  const predictions = Array.isArray(rawPredictions) ? rawPredictions : [];
   const [sportFilter, setSportFilter] = useState("all");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
 
+  // Hooks must be called before any conditional returns
   const filtered = useMemo(() => {
     return predictions.filter((p) => {
       if (sportFilter !== "all" && p.sport !== sportFilter) return false;
@@ -31,6 +33,14 @@ export default function Predictions() {
       accuracy: resolved.length > 0 ? correct / resolved.length : 0,
     };
   }, [predictions]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

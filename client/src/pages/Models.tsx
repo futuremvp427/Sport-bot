@@ -18,8 +18,19 @@ import {
 
 const COLORS = ["oklch(0.765 0.177 163)", "oklch(0.585 0.233 277)", "oklch(0.795 0.184 86)"];
 
+const SAFE_MODEL = { modelName: "gradient_boosting", sport: "nba", accuracy: 0.579, precision: 0.61, recall: 0.57, f1: 0.59, rocAuc: 0.63, brierScore: 0.22, sampleSize: 190, lastUpdated: new Date().toISOString() };
+
 export default function Models() {
-  const { modelMetrics } = useApiData();
+  const { modelMetrics: rawMetrics, isLoading } = useApiData();
+  const modelMetrics = Array.isArray(rawMetrics) && rawMetrics.length > 0 ? rawMetrics : [SAFE_MODEL];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Radar chart data
   const radarData = [

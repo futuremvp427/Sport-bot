@@ -15,6 +15,8 @@ import {
   getUserPayments,
 } from "./db";
 import { PLANS } from "./products";
+import { fetchNbaOdds, fetchNbaOddsEnhanced, getCacheStatus } from "./oddsService";
+import { FEATURE_FLAGS, getActiveLayers } from "./featureFlags";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
@@ -104,6 +106,84 @@ export const appRouter = router({
         await upsertNotificationPreferences(ctx.user.id, input);
         return { success: true };
       }),
+  }),
+
+  // ─── Live Odds (NBA) ────────────────────────────────────────────
+  odds: router({
+    // Full NBA odds with processing (cached 120s)
+    nba: publicProcedure.query(async () => {
+      return fetchNbaOdds();
+    }),
+
+    // Value bets only (edge > 3%)
+    valueBets: publicProcedure.query(async () => {
+      const result = await fetchNbaOdds();
+      const valueBets = result.games.filter((g) => g.is_value_bet);
+      return { ...result, games: valueBets };
+    }),
+
+    // Cache status (no API call)
+    cacheStatus: publicProcedure.query(() => {
+      return getCacheStatus();
+    }),
+
+    // Enhanced NBA odds — full multi-layer model (historical + injuries + fatigue)
+    nbaEnhanced: publicProcedure.query(async () => {
+      return fetchNbaOddsEnhanced();
+    }),
+
+    // Value bets from enhanced model
+    valueBetsEnhanced: publicProcedure.query(async () => {
+      const result = await fetchNbaOddsEnhanced();
+      const valueBets = result.games.filter((g) => g.is_value_bet);
+      return { ...result, games: valueBets };
+    }),
+
+    // Debug: sample enhanced predictions (1-5 games, lightweight)
+    debugEnhancedPrediction: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(5).default(2) }).optional())
+      .query(async ({ input }) => {
+        const result = await fetchNbaOddsEnhanced();
+        const sample = result.games.slice(0, input?.limit ?? 2);
+        return {
+          source: result.source,
+          active_flags: FEATURE_FLAGS,
+          active_layers: getActiveLayers(),
+          sample_predictions: sample.map((g) => ({
+            matchup: `${g.home_team} vs ${g.away_team}`,
+            market_implied_home: g.implied_home_prob,
+            final_model_home: g.model_home_prob,
+            edge: g.edge,
+            confidence: g.confidence,
+            recommendation: g.recommendation,
+            is_value_bet: g.is_value_bet,
+            active_layers: g.active_layers,
+            explanation: g.model_output?.explanation ?? null,
+          })),
+        };
+      }),
+
+    // Dashboard summary stats
+    summary: publicProcedure.query(async () => {
+      const result = await fetchNbaOdds();
+      const games = result.games;
+      const valueBets = games.filter((g) => g.is_value_bet);
+      const betHome = games.filter((g) => g.recommendation === "BET HOME" || g.recommendation === "BET AWAY");
+
+      return {
+        source: result.source,
+        total_games: games.length,
+        value_bets: valueBets.length,
+        strong_edges: betHome.length,
+        avg_edge: games.length
+          ? Math.round(
+              (games.reduce((s, g) => s + Math.abs(g.edge ?? 0), 0) / games.length) * 10
+            ) / 10
+          : 0,
+        credits_remaining: result.credits_remaining,
+        cache_status: getCacheStatus(),
+      };
+    }),
   }),
 
   // ─── Stripe / Billing ───────────────────────────────────────────

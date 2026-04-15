@@ -18,10 +18,19 @@ function BookBadge({ name }: { name: string }) {
 }
 
 export default function Arbitrage() {
-  const { arbitrage } = useApiData();
+  const { arbitrage: rawArbitrage, isLoading } = useApiData();
+  const arbitrage = Array.isArray(rawArbitrage) ? rawArbitrage : [];
 
   const totalProfit = arbitrage.reduce((s, a) => s + a.guaranteedProfit, 0);
   const caesarsCount = arbitrage.filter((a) => a.bookA === "Caesars Sportsbook" || a.bookB === "Caesars Sportsbook").length;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

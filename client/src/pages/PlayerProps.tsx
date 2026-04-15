@@ -8,7 +8,8 @@ import { User, Zap, Filter, TrendingUp, Target } from "lucide-react";
 import { useState, useMemo } from "react";
 
 export default function PlayerProps() {
-  const { playerProps } = useApiData();
+  const { playerProps: rawProps, isLoading } = useApiData();
+  const playerProps = Array.isArray(rawProps) ? rawProps : [];
   const [sportFilter, setSportFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
 
@@ -22,6 +23,14 @@ export default function PlayerProps() {
 
   const avgEdge = filtered.length > 0 ? filtered.reduce((s, p) => s + p.edge, 0) / filtered.length : 0;
   const highConfCount = filtered.filter((p) => p.confidence > 0.15).length;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -19,7 +19,20 @@ import {
 const COLORS = ["oklch(0.765 0.177 163)", "oklch(0.585 0.233 277)", "oklch(0.712 0.194 13)"];
 
 export default function Backtesting() {
-  const { backtests } = useApiData();
+  const { backtests: rawBacktests, isLoading } = useApiData();
+
+  // Ensure backtests is always a non-empty array
+  const backtests = Array.isArray(rawBacktests) && rawBacktests.length > 0
+    ? rawBacktests
+    : [{ id: 0, name: "Value Betting", strategy: "value_betting", modelName: "gradient_boosting", sport: "nba", initialBankroll: 10000, finalBankroll: 10000, totalBets: 0, winningBets: 0, losingBets: 0, roi: 0, hitRate: 0, maxDrawdown: 0, sharpeRatio: 0, avgEdge: 0, bankrollHistory: [10000] }];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Merge bankroll histories for chart
   const maxLen = Math.max(...backtests.map((b) => b.bankrollHistory.length));

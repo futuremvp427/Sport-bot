@@ -28,3 +28,12 @@
 - [x] Verify notifications render correctly
 - [x] Verify Stripe checkout flow works
 - [x] Save checkpoint and deliver
+
+## Phase 6: Live Odds API Integration
+- [ ] Add ODDS_API_KEY secret to dashboard backend
+- [ ] Create server-side Odds API service with 120s caching
+- [ ] Add tRPC procedures for live odds, predictions, edges, arbitrage
+- [ ] Update dashboard pages to use real tRPC data
+- [ ] Remove Demo Mode banner
+- [ ] Test all pages with live data
+- [ ] Checkpoint and deploy

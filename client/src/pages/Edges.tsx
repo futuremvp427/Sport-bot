@@ -19,7 +19,8 @@ function PlatformBadge({ name }: { name: string }) {
 }
 
 export default function Edges() {
-  const { edges } = useApiData();
+  const { edges: rawEdges, isLoading } = useApiData();
+  const edges = Array.isArray(rawEdges) ? rawEdges : [];
   const [platformFilter, setPlatformFilter] = useState("all");
 
   const filtered = useMemo(() => {
@@ -32,6 +33,14 @@ export default function Edges() {
   const totalStake = filtered.reduce((s, e) => s + e.recommendedStake, 0);
 
   const platforms = ["all", "Caesars Sportsbook", "PrizePicks", "DraftKings", "FanDuel", "BetMGM"];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
