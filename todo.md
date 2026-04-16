@@ -83,3 +83,14 @@
 - [x] Update vitest tests to verify both layers
 - [x] TypeScript: 0 errors, all tests passing
 - [x] Save checkpoint and deliver final report
+
+## Phase 11: Python Backend Integration (System Intelligence)
+- [x] Add tRPC procedures to proxy Python backend: pipeline.run, pipeline.health, pipeline.simulate, pipeline.memory
+- [x] Create server/pythonApi.ts service to call Python FastAPI endpoints
+- [x] Add System Intelligence page (pipeline status, health, simulation, learning weights)
+- [x] Add route for System Intelligence page in App.tsx
+- [x] Wire system health indicators into DashboardLayout top bar
+- [x] Update useApiData to include pipeline bankroll/ROI from Python backend (data flows via pipeline.memory/bankrollSummary)
+- [x] Write vitest tests for new tRPC procedures (19 tests, all passing)
+- [x] TypeScript: 0 errors
+- [x] Save checkpoint

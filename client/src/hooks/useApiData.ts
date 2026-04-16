@@ -131,11 +131,18 @@ function safeArray<T>(val: unknown): T[] {
 }
 
 // ─── Summary builder from live games ─────────────────────────────
+interface PipelineMemory {
+  performance: { total_games: number; total_predictions: number; total_bets: number; accuracy: number };
+  roi: { total_bets: number; winning_bets: number; total_staked: number; total_profit: number; roi_pct: number };
+  bankroll: { current_balance: number };
+}
+
 function buildLiveSummary(
   games: EnhancedGame[],
   edges: Edge[],
   arbitrage: ArbitrageOpp[],
-  mockSummary: SummaryShape
+  mockSummary: SummaryShape,
+  pipelineMemory?: PipelineMemory | null
 ): SummaryShape {
   const avgEdge =
     edges.length > 0
@@ -144,8 +151,16 @@ function buildLiveSummary(
         ) / 10
       : 0;
 
+  // Merge pipeline bankroll/ROI if available
+  const bankroll = pipelineMemory?.bankroll?.current_balance ?? mockSummary.bankroll;
+  const bankrollChange = pipelineMemory ? pipelineMemory.roi.total_profit : mockSummary.bankrollChange;
+  const bankrollChangePct = pipelineMemory ? pipelineMemory.roi.roi_pct : mockSummary.bankrollChangePct;
+  const accuracy = pipelineMemory?.performance?.accuracy
+    ? Math.round(pipelineMemory.performance.accuracy * 1000) / 10
+    : mockSummary.accuracy;
+
   return {
-    ...mockSummary, // keep bankroll / ROI from mock until live tracking is built
+    ...mockSummary, // base values, overridden by pipeline data below
     totalGames: games.length,
     liveGames: games.length,
     totalPredictions: games.length,
@@ -154,6 +169,10 @@ function buildLiveSummary(
     totalEdgeValue: avgEdge,
     arbitrageOpps: arbitrage.length,
     primaryPlatforms: ["Caesars Sportsbook", "DraftKings", "FanDuel"],
+    bankroll,
+    bankrollChange,
+    bankrollChangePct,
+    accuracy,
   };
 }
 
@@ -173,6 +192,13 @@ export function useApiData(): ApiDataReturn {
     staleTime: 60_000,        // 1 min client stale time
     refetchInterval: 120_000, // 2 min auto-refresh
     retry: 2,
+  });
+
+  // Pipeline bankroll/ROI from Python backend (non-blocking)
+  const { data: pipelineMemory } = trpc.pipeline.memory.useQuery(undefined, {
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    retry: 1,
   });
 
   // ── MOCK-DEV PATH ─────────────────────────────────────────────
@@ -217,9 +243,9 @@ export function useApiData(): ApiDataReturn {
   const liveSummary = useMemo(
     () =>
       liveGames.length > 0
-        ? buildLiveSummary(liveGames, liveEdges, liveArbitrage, mockSummary)
+        ? buildLiveSummary(liveGames, liveEdges, liveArbitrage, mockSummary, pipelineMemory)
         : null,
-    [liveGames, liveEdges, liveArbitrage, mockSummary]
+    [liveGames, liveEdges, liveArbitrage, mockSummary, pipelineMemory]
   );
 
   const hasLive = !trpcLoading && liveGames.length > 0;

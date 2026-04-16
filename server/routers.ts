@@ -17,6 +17,19 @@ import {
 import { PLANS } from "./products";
 import { fetchNbaOdds, fetchNbaOddsEnhanced, getCacheStatus } from "./oddsService";
 import { FEATURE_FLAGS, getActiveLayers } from "./featureFlags";
+import {
+  getApiHealth,
+  getSystemHealth,
+  getSystemMemory,
+  getPythonDashboardSummary,
+  runPipeline,
+  runSimulation,
+  getWeightsHistory,
+  getRoiHistory,
+  getPatterns,
+  getBankrollHistory,
+  getBankrollSummary,
+} from "./pythonApi";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
@@ -183,6 +196,91 @@ export const appRouter = router({
         credits_remaining: result.credits_remaining,
         cache_status: getCacheStatus(),
       };
+    }),
+  }),
+
+  // ─── Pipeline / System Intelligence ─────────────────────────────
+  pipeline: router({
+    /** Quick health check */
+    health: publicProcedure.query(async () => {
+      try {
+        return await getApiHealth();
+      } catch {
+        return { status: "offline", timestamp: new Date().toISOString(), version: "unknown" };
+      }
+    }),
+
+    /** Full system health (self-healing) */
+    systemHealth: publicProcedure.query(async () => {
+      return getSystemHealth();
+    }),
+
+    /** System memory snapshot */
+    memory: publicProcedure.query(async () => {
+      return getSystemMemory();
+    }),
+
+    /** Python dashboard summary */
+    dashboardSummary: publicProcedure.query(async () => {
+      return getPythonDashboardSummary();
+    }),
+
+    /** Run the full pipeline */
+    run: protectedProcedure
+      .input(
+        z.object({
+          sport: z.string().default("nba"),
+          executionMode: z.enum(["paper", "live"]).default("paper"),
+          runSimulation: z.boolean().default(true),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return runPipeline(input.sport, input.executionMode, input.runSimulation);
+      }),
+
+    /** Run simulation only */
+    simulate: protectedProcedure
+      .input(
+        z.object({
+          sport: z.string().default("nba"),
+          cycles: z.number().min(1).max(100).default(20),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return runSimulation(input.sport, input.cycles);
+      }),
+
+    /** Weights history */
+    weightsHistory: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(200).default(50) }).optional())
+      .query(async ({ input }) => {
+        return getWeightsHistory(input?.limit ?? 50);
+      }),
+
+    /** ROI history */
+    roiHistory: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(200).default(50) }).optional())
+      .query(async ({ input }) => {
+        return getRoiHistory(input?.limit ?? 50);
+      }),
+
+    /** Detected patterns */
+    patterns: publicProcedure
+      .input(z.object({ sport: z.string().optional(), limit: z.number().min(1).max(200).default(50) }).optional())
+      .query(async ({ input }) => {
+        return getPatterns(input?.sport, input?.limit ?? 50);
+      }),
+
+    /** Bankroll history */
+    bankrollHistory: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(1000).default(100) }).optional())
+      .query(async ({ input }) => {
+        return getBankrollHistory(input?.limit ?? 100);
+      }),
+
+    /** Bankroll summary */
+    bankrollSummary: publicProcedure.query(async () => {
+      return getBankrollSummary();
     }),
   }),
 

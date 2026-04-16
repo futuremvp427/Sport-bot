@@ -16,6 +16,7 @@ import Bankroll from "./pages/Bankroll";
 import NotificationSettings from "./pages/NotificationSettings";
 import Pricing from "./pages/Pricing";
 import Billing from "./pages/Billing";
+import SystemIntelligence from "./pages/SystemIntelligence";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ function Router() {
         <Route path="/notifications" component={NotificationSettings} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/billing" component={Billing} />
+        <Route path="/system" component={SystemIntelligence} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

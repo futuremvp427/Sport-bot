@@ -27,6 +27,7 @@ import {
 import NotificationBell from "./NotificationBell";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { path: "/backtesting", label: "Backtesting", icon: FlaskConical },
   { path: "/models", label: "Models", icon: Cpu },
   { path: "/bankroll", label: "Bankroll", icon: Wallet },
+  { path: "/system", label: "System Intel", icon: Zap },
 ];
 
 const BOTTOM_NAV = [
@@ -44,6 +46,34 @@ const BOTTOM_NAV = [
   { path: "/pricing", label: "Pricing", icon: Crown },
   { path: "/billing", label: "Billing", icon: CreditCard },
 ];
+
+function PipelineStatusBadge() {
+  const { data: health } = trpc.pipeline.health.useQuery(undefined, {
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+    retry: 1,
+  });
+  const isOnline = health?.status === "healthy";
+  const isOffline = health?.status === "offline" || !health;
+  return (
+    <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+      isOnline
+        ? "bg-profit/10 border-profit/20"
+        : isOffline
+        ? "bg-loss/10 border-loss/20"
+        : "bg-caution/10 border-caution/20"
+    }`}>
+      <div className={`w-1.5 h-1.5 rounded-full ${
+        isOnline ? "bg-profit animate-pulse" : isOffline ? "bg-loss" : "bg-caution animate-pulse"
+      }`} />
+      <span className={`text-xs font-medium data-value ${
+        isOnline ? "text-profit" : isOffline ? "text-loss" : "text-caution"
+      }`}>
+        {isOnline ? "System Online" : isOffline ? "Engine Offline" : "Degraded"}
+      </span>
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -178,10 +208,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-profit/10 border border-profit/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
-              <span className="text-xs font-medium text-profit data-value">System Online</span>
-            </div>
+            <PipelineStatusBadge />
             {isAuthenticated && <NotificationBell />}
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
