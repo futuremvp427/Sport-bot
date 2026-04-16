@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  History,
   Menu,
   X,
   User,
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { path: "/backtesting", label: "Backtesting", icon: FlaskConical },
   { path: "/models", label: "Models", icon: Cpu },
   { path: "/bankroll", label: "Bankroll", icon: Wallet },
+  { path: "/bets", label: "Bet History", icon: History },
   { path: "/system", label: "System Intel", icon: Zap },
 ];
 

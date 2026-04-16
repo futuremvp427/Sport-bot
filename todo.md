@@ -94,3 +94,41 @@
 - [x] Write vitest tests for new tRPC procedures (19 tests, all passing)
 - [x] TypeScript: 0 errors
 - [x] Save checkpoint
+
+## Phase 12: Execute 5-Task Sprint
+
+### Task 1: Schedule Automatic Pipeline Runs
+- [x] Create server/pipelineScheduler.ts with recurring background loop
+- [x] Trigger pipeline.run on configurable interval (default 15 min)
+- [x] Auto-update predictions, learning, ROI, and memory
+- [x] Add tRPC procedures: scheduler.status, scheduler.start, scheduler.stop
+- [x] Add scheduler controls to System Intel page
+- [x] Write vitest tests for scheduler (21 new tests in scheduler-bets.test.ts)
+
+### Task 2: Build Bet History System
+- [x] Add placed_bets table to drizzle/schema.ts (sport, team, odds, stake, outcome, profit_loss, timestamp)
+- [x] Run pnpm db:push to sync schema
+- [x] Create server/db.ts helpers for bet CRUD
+- [x] Add tRPC procedures: bets.list (with filters), bets.create, bets.stats
+- [x] Create client/src/pages/BetHistory.tsx with filterable table
+- [x] Add BetHistory route to App.tsx and sidebar nav
+- [x] Write vitest tests for bet procedures (bets.list, bets.create, bets.stats)
+
+### Task 3: Expand Multi-Sport Support in UI
+- [x] Create shared sport selector component (NBA, NFL, MLB, NHL, Soccer, Golf, Boxing)
+- [x] Add sport selector to System Intel page
+- [x] Add sport selector to Predictions page
+- [x] Add sport selector to Value Bets page
+- [x] Ensure pipeline.run and pipeline.simulate use selected sport parameter
+- [x] Write vitest tests for sport parameter passing (nfl, mlb, nhl, soccer, boxing, golf)
+
+### Task 4: Verify Integration
+- [x] Confirm System Intel page pulls real backend data (not mock)
+- [x] Confirm System Online badge polls backend correctly
+- [x] Confirm dashboard summary cards (bankroll, ROI, accuracy) are real
+- [x] Run all tests and confirm 0 failures (67 tests, 4 files, all passing)
+
+### Task 5: Push All Changes
+- [ ] Commit all work
+- [ ] Push to branch: tooling-pack-bootstrap
+- [ ] Provide commit summary

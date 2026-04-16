@@ -6,6 +6,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useApiData } from "@/hooks/useApiData";
 import { motion } from "framer-motion";
 import { Brain, Filter, CheckCircle2, XCircle, Clock, ChevronRight } from "lucide-react";
+import SportSelector from "@/components/SportSelector";
 import PredictionDetailPanel from "@/components/predictions/PredictionDetailPanel";
 import {
   mapEnhancedGameToPredictionDetail,
@@ -18,7 +19,7 @@ export default function Predictions() {
   const predictions = Array.isArray(rawPredictions) ? rawPredictions : [];
   const games = Array.isArray(enhancedGames) ? enhancedGames : [];
 
-  const [sportFilter, setSportFilter] = useState("all");
+  const [sportFilter, setSportFilter] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
 
   // Detail panel state
@@ -79,7 +80,7 @@ export default function Predictions() {
   // Hooks must be called before any conditional returns
   const filtered = useMemo(() => {
     return predictions.filter((p) => {
-      if (sportFilter !== "all" && p.sport !== sportFilter) return false;
+      if (sportFilter && p.sport !== sportFilter) return false;
       if (outcomeFilter !== "all" && p.outcome !== outcomeFilter) return false;
       return true;
     });
@@ -141,21 +142,7 @@ export default function Predictions() {
             <Filter className="w-3.5 h-3.5" />
             <span>Filters:</span>
           </div>
-          <div className="flex gap-1.5">
-            {["all", "nba", "nfl", "mlb"].map((s) => (
-              <button
-                key={s}
-                onClick={() => setSportFilter(s)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  sportFilter === s
-                    ? "bg-primary/20 text-primary border border-primary/30"
-                    : "bg-accent text-muted-foreground hover:text-foreground border border-transparent"
-                }`}
-              >
-                {s === "all" ? "All Sports" : s.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          <SportSelector value={sportFilter} onChange={setSportFilter} />
           <div className="flex gap-1.5">
             {["all", "correct", "incorrect", "pending"].map((o) => (
               <button

@@ -5,7 +5,8 @@
 */
 import { useApiData } from "@/hooks/useApiData";
 import { motion } from "framer-motion";
-import { TrendingUp, DollarSign, Percent, Target, Crown, ChevronRight } from "lucide-react";
+import { TrendingUp, DollarSign, Percent, Target, Crown, ChevronRight, Filter } from "lucide-react";
+import SportSelector from "@/components/SportSelector";
 import { useState, useMemo, useCallback } from "react";
 import PredictionDetailPanel from "@/components/predictions/PredictionDetailPanel";
 import {
@@ -30,6 +31,7 @@ export default function Edges() {
   const edges = Array.isArray(rawEdges) ? rawEdges : [];
   const games = Array.isArray(enhancedGames) ? enhancedGames : [];
 
+  const [sportFilter, setSportFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
 
   // Detail panel state
@@ -87,9 +89,15 @@ export default function Edges() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (platformFilter === "all") return edges;
-    return edges.filter((e) => e.sportsbook === platformFilter);
-  }, [edges, platformFilter]);
+    let result = edges;
+    if (sportFilter) {
+      result = result.filter((e) => (e as any).sport === sportFilter);
+    }
+    if (platformFilter !== "all") {
+      result = result.filter((e) => e.sportsbook === platformFilter);
+    }
+    return result;
+  }, [edges, sportFilter, platformFilter]);
 
   const totalEV = filtered.reduce((s, e) => s + e.expectedValue, 0);
   const avgEdge = filtered.length > 0 ? filtered.reduce((s, e) => s + e.edge, 0) / filtered.length : 0;
@@ -132,13 +140,15 @@ export default function Edges() {
           ))}
         </div>
 
-        {/* Platform filter */}
+        {/* Sport + Platform filters */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="flex flex-wrap items-center gap-2"
+          className="flex flex-wrap items-center gap-3"
         >
+          <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+          <SportSelector value={sportFilter} onChange={setSportFilter} />
           <Crown className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-xs text-muted-foreground mr-1">Platform:</span>
           {platforms.map((p) => (

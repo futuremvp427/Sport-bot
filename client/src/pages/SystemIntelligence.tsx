@@ -2,7 +2,7 @@
  * SystemIntelligence — Full pipeline monitoring, health, learning, and simulation dashboard.
  * Connects to the Python Sports Betting Intelligence backend via tRPC pipeline.* procedures.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,11 @@ import {
   XCircle,
   Clock,
   BarChart3,
+  Timer,
+  Square,
+  Settings2,
 } from "lucide-react";
+import SportSelector, { SUPPORTED_SPORTS } from "@/components/SportSelector";
 import {
   LineChart as ReLineChart,
   Line,
@@ -106,6 +110,7 @@ export default function SystemIntelligence() {
   const { isAuthenticated } = useAuth();
   const [isRunning, setIsRunning] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [selectedSport, setSelectedSport] = useState("nba");
   const utils = trpc.useUtils();
 
   // ── Queries ────────────────────────────────────────────────────
@@ -142,10 +147,32 @@ export default function SystemIntelligence() {
     staleTime: 60_000,
   });
 
+  // ── Scheduler ─────────────────────────────────────────────────
+  const { data: schedulerStatus } = trpc.scheduler.status.useQuery(undefined, {
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+
+  const startScheduler = trpc.scheduler.start.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Scheduler started: every ${data.intervalMs / 60000} min, sport=${data.sport}`);
+      utils.scheduler.status.invalidate();
+    },
+    onError: (err) => toast.error(`Scheduler start failed: ${err.message}`),
+  });
+
+  const stopScheduler = trpc.scheduler.stop.useMutation({
+    onSuccess: () => {
+      toast.success("Scheduler stopped");
+      utils.scheduler.status.invalidate();
+    },
+    onError: (err) => toast.error(`Scheduler stop failed: ${err.message}`),
+  });
+
   // ── Mutations ──────────────────────────────────────────────────
   const runPipeline = trpc.pipeline.run.useMutation({
     onSuccess: (data) => {
-      toast.success(`Pipeline complete: ${data.pipeline_stages.selected} bets selected`);
+      toast.success(`Pipeline complete (${selectedSport.toUpperCase()}): ${data.pipeline_stages.selected} bets selected`);
       utils.pipeline.memory.invalidate();
       utils.pipeline.weightsHistory.invalidate();
       utils.pipeline.roiHistory.invalidate();
@@ -233,7 +260,7 @@ export default function SystemIntelligence() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => { setIsRunning(true); runPipeline.mutate({}); }}
+                onClick={() => { setIsRunning(true); runPipeline.mutate({ sport: selectedSport }); }}
                 disabled={isRunning || !isOnline}
                 className="gap-1.5"
               >
@@ -243,7 +270,7 @@ export default function SystemIntelligence() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => { setIsSimulating(true); runSim.mutate({}); }}
+                onClick={() => { setIsSimulating(true); runSim.mutate({ sport: selectedSport }); }}
                 disabled={isSimulating || !isOnline}
                 className="gap-1.5"
               >
@@ -253,6 +280,54 @@ export default function SystemIntelligence() {
             </>
           )}
         </div>
+      </motion.div>
+
+      {/* Sport Selector + Scheduler Controls */}
+      <motion.div {...anim(0.03)} className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Settings2 className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Sport:</span>
+          <SportSelector value={selectedSport} onChange={setSelectedSport} excludeAll />
+        </div>
+        {isAuthenticated && (
+          <div className="flex items-center gap-3 md:ml-auto">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-accent/30 border border-border">
+              <Timer className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">
+                Scheduler: {schedulerStatus?.running ? (
+                  <span className="text-profit font-semibold">
+                    Active ({(schedulerStatus.intervalMs / 60000).toFixed(0)}min)
+                    {schedulerStatus.runCount > 0 && ` · ${schedulerStatus.runCount} runs`}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Stopped</span>
+                )}
+              </span>
+            </div>
+            {schedulerStatus?.running ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => stopScheduler.mutate()}
+                className="gap-1.5 border-loss/30 text-loss hover:bg-loss/10"
+              >
+                <Square className="w-3 h-3" />
+                Stop
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => startScheduler.mutate({ sport: selectedSport, intervalMinutes: 15 })}
+                disabled={!isOnline}
+                className="gap-1.5 border-profit/30 text-profit hover:bg-profit/10"
+              >
+                <Timer className="w-3 h-3" />
+                Auto-Run (15min)
+              </Button>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* KPI Row */}

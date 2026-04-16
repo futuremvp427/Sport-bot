@@ -30,6 +30,16 @@ import {
   getBankrollHistory,
   getBankrollSummary,
 } from "./pythonApi";
+import {
+  startScheduler,
+  stopScheduler,
+  getStatus as getSchedulerStatus,
+} from "./pipelineScheduler";
+import {
+  getPlacedBets,
+  createPlacedBet,
+  getPlacedBetStats,
+} from "./db";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
@@ -281,6 +291,81 @@ export const appRouter = router({
     /** Bankroll summary */
     bankrollSummary: publicProcedure.query(async () => {
       return getBankrollSummary();
+    }),
+  }),
+
+  // ─── Scheduler ──────────────────────────────────────────────────
+  scheduler: router({
+    status: publicProcedure.query(() => {
+      return getSchedulerStatus();
+    }),
+
+    start: protectedProcedure
+      .input(
+        z.object({
+          intervalMinutes: z.number().min(1).max(1440).default(15),
+          sport: z.string().default("nba"),
+          executionMode: z.enum(["paper", "live"]).default("paper"),
+          runSimulation: z.boolean().default(true),
+          runImmediately: z.boolean().default(true),
+        }).optional()
+      )
+      .mutation(({ input }) => {
+        return startScheduler(input ?? undefined);
+      }),
+
+    stop: protectedProcedure.mutation(() => {
+      return stopScheduler();
+    }),
+  }),
+
+  // ─── Bet History ────────────────────────────────────────────────
+  bets: router({
+    list: protectedProcedure
+      .input(
+        z.object({
+          sport: z.string().optional(),
+          result: z.enum(["win", "loss", "pending"]).optional(),
+          limit: z.number().min(1).max(500).default(100),
+          offset: z.number().min(0).default(0),
+        }).optional()
+      )
+      .query(async ({ ctx, input }) => {
+        return getPlacedBets(ctx.user.id, {
+          sport: input?.sport,
+          result: input?.result,
+          limit: input?.limit ?? 100,
+          offset: input?.offset ?? 0,
+        });
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          sport: z.string(),
+          team: z.string(),
+          betType: z.string(),
+          odds: z.number(),
+          stake: z.number().min(0.01),
+          outcome: z.enum(["win", "loss", "pending"]).default("pending"),
+          profitLoss: z.number().default(0),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return createPlacedBet({
+          userId: ctx.user.id,
+          sport: input.sport,
+          team: input.team,
+          betType: input.betType,
+          odds: input.odds,
+          stake: input.stake,
+          outcome: input.outcome,
+          profitLoss: input.profitLoss,
+        });
+      }),
+
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      return getPlacedBetStats(ctx.user.id);
     }),
   }),
 

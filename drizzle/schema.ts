@@ -75,3 +75,23 @@ export const payments = mysqlTable("payments", {
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+/**
+ * Placed bets — tracks all bets placed through the system.
+ */
+export const placedBets = mysqlTable("placed_bets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  sport: varchar("sport", { length: 32 }).notNull(),
+  team: varchar("team", { length: 128 }).notNull(),
+  betType: varchar("betType", { length: 64 }).notNull(), // moneyline, spread, over/under
+  odds: int("odds").notNull(), // American odds
+  stake: int("stake").notNull(), // in cents
+  outcome: mysqlEnum("outcome", ["win", "loss", "pending"]).default("pending").notNull(),
+  profitLoss: int("profitLoss").default(0).notNull(), // in cents
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  settledAt: timestamp("settledAt"),
+});
+
+export type PlacedBet = typeof placedBets.$inferSelect;
+export type InsertPlacedBet = typeof placedBets.$inferInsert;

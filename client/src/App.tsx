@@ -17,6 +17,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import Pricing from "./pages/Pricing";
 import Billing from "./pages/Billing";
 import SystemIntelligence from "./pages/SystemIntelligence";
+import BetHistory from "./pages/BetHistory";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/billing" component={Billing} />
         <Route path="/system" component={SystemIntelligence} />
+        <Route path="/bets" component={BetHistory} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

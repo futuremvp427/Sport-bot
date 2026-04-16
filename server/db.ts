@@ -9,6 +9,8 @@ import {
   InsertNotificationPreference,
   payments,
   InsertPayment,
+  placedBets,
+  InsertPlacedBet,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -171,4 +173,90 @@ export async function getUserPayments(userId: number, limit = 50) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(payments).where(eq(payments.userId, userId)).orderBy(desc(payments.createdAt)).limit(limit);
+}
+
+// ─── Placed Bet Helpers ────────────────────────────────────────
+
+export async function createPlacedBet(data: Omit<InsertPlacedBet, "id" | "createdAt" | "settledAt">) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(placedBets).values(data);
+  return { id: Number(result[0].insertId), ...data };
+}
+
+export async function getPlacedBets(
+  userId: number,
+  filters: { sport?: string; result?: string; limit: number; offset: number }
+) {
+  const db = await getDb();
+  if (!db) return { bets: [], total: 0 };
+
+  const conditions = [eq(placedBets.userId, userId)];
+  if (filters.sport) {
+    conditions.push(eq(placedBets.sport, filters.sport));
+  }
+  if (filters.result) {
+    conditions.push(eq(placedBets.outcome, filters.result as "win" | "loss" | "pending"));
+  }
+
+  const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+
+  const [bets, countResult] = await Promise.all([
+    db
+      .select()
+      .from(placedBets)
+      .where(whereClause)
+      .orderBy(desc(placedBets.createdAt))
+      .limit(filters.limit)
+      .offset(filters.offset),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(placedBets)
+      .where(whereClause),
+  ]);
+
+  return { bets, total: countResult[0]?.count ?? 0 };
+}
+
+export async function getPlacedBetStats(userId: number) {
+  const db = await getDb();
+  if (!db)
+    return {
+      totalBets: 0,
+      wins: 0,
+      losses: 0,
+      pending: 0,
+      totalStaked: 0,
+      totalProfitLoss: 0,
+      winRate: 0,
+      roi: 0,
+    };
+
+  const result = await db
+    .select({
+      totalBets: sql<number>`count(*)`,
+      wins: sql<number>`SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END)`,
+      losses: sql<number>`SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END)`,
+      pending: sql<number>`SUM(CASE WHEN outcome = 'pending' THEN 1 ELSE 0 END)`,
+      totalStaked: sql<number>`COALESCE(SUM(stake), 0)`,
+      totalProfitLoss: sql<number>`COALESCE(SUM(profitLoss), 0)`,
+    })
+    .from(placedBets)
+    .where(eq(placedBets.userId, userId));
+
+  const stats = result[0] ?? {
+    totalBets: 0,
+    wins: 0,
+    losses: 0,
+    pending: 0,
+    totalStaked: 0,
+    totalProfitLoss: 0,
+  };
+
+  const settled = (stats.wins ?? 0) + (stats.losses ?? 0);
+  return {
+    ...stats,
+    winRate: settled > 0 ? (stats.wins ?? 0) / settled : 0,
+    roi: (stats.totalStaked ?? 0) > 0 ? (stats.totalProfitLoss ?? 0) / (stats.totalStaked ?? 0) : 0,
+  };
 }
